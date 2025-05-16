@@ -1,6 +1,8 @@
 const TelegramBot = require('node-telegram-bot-api')
 const { getAppleCatalog, getIphones, iphoneModels } = require('./src/parsers/appleParser')
+const { getJwCurrentArticleTitle } = require('./src/parsers/jwParser')
 require('dotenv').config()
+const osxTemp = require('osx-temperature-sensor')
 
 // Получаем токен из переменных окружения
 const token = process.env.TELEGRAM_BOT_TOKEN
@@ -20,7 +22,12 @@ const bot = new TelegramBot(token, options)
 // Главное меню
 const mainMenu = {
   reply_markup: {
-    keyboard: [['🍎 Каталог iPhone', '📱 Телефоны'], ['💰 Ценовые диапазоны', '🔄 Обновить данные'], ['ℹ️ Помощь']],
+    keyboard: [
+      ['🍎 Каталог iPhone', '📱 Телефоны'],
+      ['💰 Ценовые диапазоны', '🔄 Обновить данные'],
+      ['🔋 Температура устройства', '📰 Статья JW.org'],
+      ['ℹ️ Помощь'],
+    ],
     resize_keyboard: true,
   },
 }
@@ -33,13 +40,16 @@ const phoneTypesMenu = {
   },
 }
 
-// Меню моделей iPhone
 const iphoneModelsMenu = {
   reply_markup: {
     keyboard: [...Object.keys(iphoneModels).map(version => [`iPhone ${version}`]), ['↩️ Назад к выбору типа']],
     resize_keyboard: true,
   },
 }
+
+const jwChats = new Set()
+let jwIntervalStarted = false
+let lastJwTitle = ''
 
 // Команда /start
 bot.onText(/\/start/, msg => {
@@ -207,57 +217,60 @@ bot.onText(/ℹ️ Помощь/, msg => {
   )
 })
 
-// Обработка возврата к выбору версии
 bot.onText(/↩️ Назад к выбору версии/, msg => {
   const chatId = msg.chat.id
   bot.sendMessage(chatId, 'Выберите модель iPhone:', iphoneModelsMenu)
 })
 
-// // Обработка выбора модели Samsung
-// bot.onText(/Samsung$/, msg => {
+bot.onText(/📰 Статья JW.org/, async msg => {
+  const chatId = msg.chat.id
+  jwChats.add(chatId)
+  bot.sendMessage(chatId, 'Теперь вы будете получать заголовок текущей статьи с jw.org/ru каждый час.')
+
+  // Запускаем интервал только один раз
+  if (!jwIntervalStarted) {
+    jwIntervalStarted = true
+    setInterval(async () => {
+      const title = await getJwCurrentArticleTitle()
+      if (title && title !== lastJwTitle) {
+        lastJwTitle = title
+        for (const id of jwChats) {
+          bot.sendMessage(id, `📰 Заголовок текущей статьи с jw.org/ru:\n${title}`)
+        }
+      }
+    }, 60 * 1 * 1000) // 1 минута (для теста)
+  }
+
+  // Отправляем заголовок сразу при первом запуске
+  const title = await getJwCurrentArticleTitle()
+  if (title && title !== lastJwTitle) {
+    lastJwTitle = title
+    bot.sendMessage(chatId, `📰 Заголовок текущей статьи с jw.org/ru:\n${title}`)
+  }
+})
+
+// Обработка кнопки "🔋 Температура устройства"
+bot.onText(/🔋 Температура устройства/, msg => {
+  const chatId = msg.chat.id
+
+  let temperature = osxTemp.cpuTemperature()
+  let color = '🟢'
+  if (temperature.max > 70) color = '🟡'
+  if (temperature.max > 85) color = '🔴'
+  const tempStr = Number(temperature.max).toFixed(2)
+
+  bot.sendMessage(chatId, `🖥️ Температура устройства\n${color} Температура CPU: ${tempStr}°C`)
+})
+
+// Команда для получения температуры устройства
+// bot.onText(/\/temp/, async msg => {
 //   const chatId = msg.chat.id
 
-//   // Создаем клавиатуру с моделями S24 и S25
-//   const samsungSeriesMenu = {
-//     reply_markup: {
-//       keyboard: [
-//         ['Samsung Galaxy S24', 'Samsung Galaxy S24+'],
-//         ['Samsung Galaxy S24 Ultra', 'Samsung Galaxy S25'],
-//         ['Samsung Galaxy S25+', 'Samsung Galaxy S25 Ultra'],
-//         ['↩️ Назад к выбору типа'],
-//       ],
-//       resize_keyboard: true,
-//     },
-//   }
+//   let temperature = osxTemp.cpuTemperature()
 
-//   bot.sendMessage(chatId, 'Выберите модель Samsung Galaxy:', samsungSeriesMenu)
-// })
+//   console.log(temperature)
 
-// // Обработка выбора конкретной модели Samsung Galaxy
-// bot.onText(/Samsung Galaxy (S2[45](\+| Ultra)?)/, async (msg, match) => {
-//   const chatId = msg.chat.id
-//   const model = match[1].toLowerCase()
-
-//   // Определяем тип модели (base, plus, pro)
-//   let modelType
-//   if (model.includes('ultra')) {
-//     modelType = 'pro'
-//   } else if (model.includes('+')) {
-//     modelType = 'plus'
-//   } else {
-//     modelType = 'base'
-//   }
-
-//   // Определяем версию (24 или 25)
-//   const version = model.match(/S2[45]/)[0]
-
-//   try {
-//     const result = await getIphones(version, modelType)
-//     bot.sendMessage(chatId, result.text, mainMenu)
-//   } catch (error) {
-//     console.error('Ошибка при получении данных о Samsung:', error)
-//     bot.sendMessage(chatId, 'Произошла ошибка при получении данных. Попробуйте позже.', mainMenu)
-//   }
+//   bot.sendChatAction(chatId, 'typing')
 // })
 
 // Обработка неизвестных команд

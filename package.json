@@ -18,7 +18,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "node-telegram-bot-api": "^0.65.1"
+    "node-telegram-bot-api": "^0.65.1",
+    "osx-temperature-sensor": "^1.0.8"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
