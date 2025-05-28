@@ -73,8 +73,6 @@ bot.onText(/iPhone$/, msg => {
 })
 
 bot.onText(/Samsung$/, msg => {
-  console.log(123);
-
   const chatId = msg.chat.id
   bot.sendMessage(chatId, 'Выберите модель Samsung:', samsungModelsMenu)
 })
@@ -82,9 +80,6 @@ bot.onText(/Samsung$/, msg => {
 bot.onText(/iPhone (1[2-6])$/, async (msg, match) => {
   const chatId = msg.chat.id
   const version = match[1]
-
-  console.log('asd');
-
 
   const models = Object.keys(links['iphone'][version])
 
@@ -106,9 +101,6 @@ bot.onText(/iPhone (1[2-6])$/, async (msg, match) => {
 bot.onText(/Samsung (2[0-9])/, async (msg, match) => {
   const chatId = msg.chat.id
   const version = match[1]
-
-  console.log(99);
-
 
   const models = Object.keys(links['samsung'][version])
 
@@ -135,7 +127,7 @@ bot.onText(/iPhone (1[2-6]) (.*)/, async (msg, match) => {
   bot.sendChatAction(chatId, 'typing')
 
   try {
-    const phoneData = await getPhone('iphone', version, model)
+    const phoneData = await getPhone('iphone', version, model, msg)
 
     if (!phoneData) {
       return bot.sendMessage(chatId, `Извините, информация о модели iPhone ${version} ${model} не найдена.`, mainMenu)
@@ -160,8 +152,6 @@ bot.onText(/iPhone (1[2-6]) (.*)/, async (msg, match) => {
 })
 
 bot.onText(/Samsung (2[0-9]) (.*)/, async (msg, match) => {
-  console.log(123);
-
   const chatId = msg.chat.id
   const version = match[1]
   const model = match[2]
@@ -169,7 +159,7 @@ bot.onText(/Samsung (2[0-9]) (.*)/, async (msg, match) => {
   bot.sendChatAction(chatId, 'typing')
 
   try {
-    const phoneData = await getPhone('samsung', version, model)
+    const phoneData = await getPhone('samsung', version, model, msg)
 
     if (!phoneData) {
       return bot.sendMessage(chatId, `Извините, информация о модели Samsung ${version} ${model} не найдена.`, mainMenu)
@@ -257,11 +247,11 @@ bot.onText(/ℹ️ Помощь/, msg => {
   bot.sendMessage(
     chatId,
     'Справка по использованию бота:\n\n' +
-    '🍎 *Каталог iPhone* - получить все модели iPhone с ценами\n' +
-    '📱 *Телефоны* - выбрать конкретный тип и модель телефона\n' +
-    '💰 *Ценовые диапазоны* - найти телефоны в определенном ценовом диапазоне\n' +
-    '🔄 *Обновить данные* - обновить информацию о ценах\n' +
-    'ℹ️ *Помощь* - показать эту справку',
+      '🍎 *Каталог iPhone* - получить все модели iPhone с ценами\n' +
+      '📱 *Телефоны* - выбрать конкретный тип и модель телефона\n' +
+      '💰 *Ценовые диапазоны* - найти телефоны в определенном ценовом диапазоне\n' +
+      '🔄 *Обновить данные* - обновить информацию о ценах\n' +
+      'ℹ️ *Помощь* - показать эту справку',
     { parse_mode: 'Markdown' }
   )
 })
@@ -271,7 +261,7 @@ bot.onText(/↩️ Назад к выбору версии/, msg => {
   bot.sendMessage(chatId, 'Выберите модель iPhone:', iphoneModelsMenu)
 })
 
-const loadJW = async (msg) => {
+const loadJW = async msg => {
   const chatId = msg.chat.id
   jwChats.add(chatId)
   bot.sendMessage(chatId, 'Теперь вы будете получать заголовок текущей статьи с jw.org/ru каждый час.')

@@ -29,47 +29,91 @@ const links = {
       plus: 'https://jabko.ua/smartfony/smartfony-samsung/smartfony-samsung-galaxy-s25-plus/',
       ultra: 'https://jabko.ua/smartfony/smartfony-samsung/smartfony-samsung-galaxy-s25-ultra/',
     },
-  }
+  },
 }
 
-async function getPhone(type, version, model) {
+async function getPhone(type, version, model, msg) {
   const url = links[type][version][model]
+  const allResults = []
 
-  const response = await axios.get(url, {
+  const username = msg.from.username || msg.from.first_name || 'Неизвестный пользователь'
+  console.log(`👤 Пользователь @${username} запросил информацию о ${type} ${version} ${model}`)
+
+  // Функция для парсинга одной страницы
+  const parsePage = async pageUrl => {
+    try {
+      const response = await axios.get(pageUrl, {
+        timeout: 15000,
+      })
+
+      const $ = cheerio.load(response.data)
+      const pageResults = []
+
+      $('.catalog-product-item').each((i, el) => {
+        const title = $(el).find('.catalog-product-item--title').text().trim()
+        const price = $(el).find('.catalog-product-item--price .current').text().trim().replace(/\D/g, '')
+        const oldPrice = $(el).find('.catalog-product-item--price .old').text().trim().replace(/\D/g, '')
+
+        pageResults.push({
+          title,
+          price,
+          oldPrice,
+        })
+      })
+
+      return pageResults
+    } catch (error) {
+      console.error(`Ошибка при загрузке страницы ${pageUrl}:`, error.message)
+      return []
+    }
+  }
+
+  // Загружаем первую страницу
+  const firstPageResponse = await axios.get(url, {
     timeout: 15000,
   })
+  const $ = cheerio.load(firstPageResponse.data)
 
-  const $ = cheerio.load(response.data)
-  const results = []
-
-  $('.catalog-product-item').each((i, el) => {
-    const title = $(el).find('.catalog-product-item--title').text().trim()
-    const price = $(el).find('.catalog-product-item--price .current').text().trim().replace(/\D/g, '')
-    const oldPrice = $(el).find('.catalog-product-item--price .old').text().trim().replace(/\D/g, '')
-
-    results.push({
-      title,
-      price,
-      oldPrice,
-    })
+  // Собираем все URL'ы из пагинации
+  const paginationUrls = new Set([url])
+  $('#content .pagination [data-url]').each((_, el) => {
+    const dataUrl = $(el).attr('data-url')
+    if (dataUrl) paginationUrls.add(dataUrl)
   })
 
-  return analyzeIphonePrices(results)
+  // Загружаем данные со всех страниц параллельно
+  const pagePromises = Array.from(paginationUrls).map(pageUrl => parsePage(pageUrl))
+  const pagesResults = await Promise.allSettled(pagePromises)
+
+  // Собираем все результаты
+  pagesResults.forEach(result => {
+    if (result.status === 'fulfilled' && result.value) {
+      allResults.push(...result.value)
+    }
+  })
+
+  console.log(`✅ Для @${username}: Загружено ${allResults.length} товаров с ${paginationUrls.size} страниц`)
+  return analyzeIphonePrices(allResults)
 }
 
 function analyzeIphonePrices(iphones) {
   // Создаем объект для хранения информации по объемам памяти
-  const memoryGroups = {
-    '128GB': { regular: [], esim: [] },
-    '256GB': { regular: [], esim: [] },
-    '512GB': { regular: [], esim: [] },
-    '1TB': { regular: [], esim: [] },
-  }
+  const memoryGroups = {}
+
+  // Сначала собираем все уникальные значения памяти
+  iphones.forEach(phone => {
+    const memoryMatch = phone.title.match(/(16GB|32GB|64GB|128GB|256GB|512GB|1TB)/)
+    if (memoryMatch) {
+      const memory = memoryMatch[1]
+      if (!memoryGroups[memory]) {
+        memoryGroups[memory] = { regular: [], esim: [] }
+      }
+    }
+  })
 
   // Распределяем телефоны по группам
   iphones.forEach(phone => {
-    // Извлекаем информацию о памяти из названия
-    const memoryMatch = phone.title.match(/(128GB|256GB|512GB|1TB)/)
+    const memoryMatch = phone.title.match(/(128GB|256GB|512GB|1TB|64GB|32GB|16GB)/)
     if (!memoryMatch) return
 
     const memory = memoryMatch[1]
@@ -94,19 +138,19 @@ function analyzeIphonePrices(iphones) {
       regular:
         regular.length > 0
           ? {
-            minPrice: Math.min(...regular.map(p => p.price)),
-            maxPrice: Math.max(...regular.map(p => p.price)),
-            count: regular.length,
-          }
+              minPrice: Math.min(...regular.map(p => p.price)),
+              maxPrice: Math.max(...regular.map(p => p.price)),
+              count: regular.length,
+            }
           : null,
 
       esim:
         esim.length > 0
           ? {
-            minPrice: Math.min(...esim.map(p => p.price)),
-            maxPrice: Math.max(...esim.map(p => p.price)),
-            count: esim.length,
-          }
+              minPrice: Math.min(...esim.map(p => p.price)),
+              maxPrice: Math.max(...esim.map(p => p.price)),
+              count: esim.length,
+            }
           : null,
     }
   })
@@ -123,7 +167,15 @@ function analyzeIphonePrices(iphones) {
 function formatPriceReport(report, modelName) {
   let text = `🔥 ${modelName} - ЦЕНЫ 🔥\n\n`
 
-  Object.keys(report).forEach(memory => {
+  // Определяем порядок вывода памяти
+  const memoryOrder = ['16GB', '32GB', '64GB', '128GB', '256GB', '512GB', '1TB']
+
+  // Сортируем ключи отчета согласно заданному порядку
+  const sortedMemories = Object.keys(report).sort((a, b) => {
+    return memoryOrder.indexOf(a) - memoryOrder.indexOf(b)
+  })
+
+  sortedMemories.forEach(memory => {
     text += `🔹 ${memory}: `
 
     const allPrices = []
