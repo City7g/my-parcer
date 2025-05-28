@@ -1,7 +1,7 @@
-const axios = require('axios')
-const cheerio = require('cheerio')
+import axios from 'axios'
+import * as cheerio from 'cheerio'
 
-async function getJwCurrentArticleTitle() {
+export async function getJwCurrentArticleTitle() {
   try {
     const response = await axios.get('https://www.jw.org/ru/', {
       headers: {
@@ -10,6 +10,7 @@ async function getJwCurrentArticleTitle() {
       },
       timeout: 10000,
     })
+
     const $ = cheerio.load(response.data)
 
     let title = $('#content .billboardTitle').first().text().trim()
@@ -20,8 +21,4 @@ async function getJwCurrentArticleTitle() {
     console.error('Ошибка при получении заголовка с jw.org:', error.message)
     return 'Ошибка при получении заголовка с jw.org'
   }
-}
-
-module.exports = {
-  getJwCurrentArticleTitle,
 }

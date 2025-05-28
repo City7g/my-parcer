@@ -1,8 +1,9 @@
-const TelegramBot = require('node-telegram-bot-api')
-const { iphoneModels, getPhone, links } = require('./src/parsers/appleParser')
-const { getJwCurrentArticleTitle } = require('./src/parsers/jwParser')
-require('dotenv').config()
-// const osxTemp = require('osx-temperature-sensor')
+import TelegramBot from 'node-telegram-bot-api'
+import { getPhone, links } from './src/parsers/appleParser.js'
+import { getJwCurrentArticleTitle } from './src/parsers/jwParser.js'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const token = process.env.TELEGRAM_BOT_TOKEN
 if (!token) {
