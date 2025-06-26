@@ -1,8 +1,19 @@
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 
-export async function getJwCurrentArticleTitle() {
+let lastTitle = null
+let lastCheckTime = 0
+const CACHE_DURATION = 60 * 60 * 1000 // 1 час в миллисекундах
+
+export async function getJwCurrentArticleTitle(notifyCallback = null) {
   try {
+    const currentTime = Date.now()
+
+    // Возвращаем кешированный заголовок, если он есть и кеш не истек
+    if (lastTitle && currentTime - lastCheckTime < CACHE_DURATION) {
+      return lastTitle
+    }
+
     const response = await axios.get('https://www.jw.org/ru/', {
       headers: {
         'User-Agent':
@@ -12,13 +23,23 @@ export async function getJwCurrentArticleTitle() {
     })
 
     const $ = cheerio.load(response.data)
+    const newTitle = $('#content .billboardTitle').first().text().trim()
 
-    let title = $('#content .billboardTitle').first().text().trim()
-    if (!title) return
+    if (!newTitle) {
+      return lastTitle || null
+    }
 
-    return title
+    // Если заголовок изменился и есть callback, вызываем его
+    if (lastTitle && newTitle !== lastTitle && notifyCallback) {
+      notifyCallback(newTitle)
+    }
+
+    lastTitle = newTitle
+    lastCheckTime = currentTime
+
+    return newTitle
   } catch (error) {
     console.error('Ошибка при получении заголовка с jw.org:', error.message)
-    return 'Ошибка при получении заголовка с jw.org'
+    return lastTitle || 'Ошибка при получении заголовка с jw.org'
   }
 }

@@ -1,36 +1,7 @@
 import axios from 'axios'
 import * as cheerio from 'cheerio'
-
-const dollarRate = 41.51
-
-const links = {
-  iphone: {
-    15: {
-      base: 'https://jabko.ua/iphone/apple-iphone-15-/',
-      plus: 'https://jabko.ua/iphone/apple-iphone-15-plus/',
-      pro: 'https://jabko.ua/iphone/apple-iphone-15-pro/',
-      proMax: 'https://jabko.ua/iphone/apple-iphone-15-pro-max/',
-    },
-    16: {
-      base: 'https://jabko.ua/iphone/apple-iphone-16/',
-      plus: 'https://jabko.ua/iphone/apple-iphone-16-plus/',
-      pro: 'https://jabko.ua/iphone/apple-iphone-16-pro/',
-      proMax: 'https://jabko.ua/iphone/apple-iphone-16-pro-max/',
-    },
-  },
-  samsung: {
-    24: {
-      base: 'https://jabko.ua/smartfony/smartfony-samsung/samsung-galaxy-s24/',
-      plus: 'https://jabko.ua/smartfony/smartfony-samsung/smartfony-samsung-galaxy-s24-plus/',
-      ultra: 'https://jabko.ua/smartfony/smartfony-samsung/smartfony-samsung-galaxy-s24-ultra/',
-    },
-    25: {
-      base: 'https://jabko.ua/smartfony/smartfony-samsung/samsung-galaxy-s25/',
-      plus: 'https://jabko.ua/smartfony/smartfony-samsung/smartfony-samsung-galaxy-s25-plus/',
-      ultra: 'https://jabko.ua/smartfony/smartfony-samsung/smartfony-samsung-galaxy-s25-ultra/',
-    },
-  },
-}
+import { dollarRate, links } from '../config/constants.js'
+import { formatPrice, formatPriceReport } from '../utils/formatters.js'
 
 async function getPhone(type, version, model, msg) {
   const url = links[type][version][model]
@@ -164,57 +135,120 @@ function analyzeIphonePrices(iphones) {
   }
 }
 
-function formatPriceReport(report, modelName) {
-  let text = `🔥 ${modelName} - ЦЕНЫ 🔥\n\n`
+async function getIphones() {
+  const allResults = []
+  const errors = []
 
-  // Определяем порядок вывода памяти
-  const memoryOrder = ['16GB', '32GB', '64GB', '128GB', '256GB', '512GB', '1TB']
+  // Функция для парсинга одной страницы
+  const parsePage = async pageUrl => {
+    try {
+      const response = await axios.get(pageUrl, {
+        timeout: 15000,
+      })
 
-  // Сортируем ключи отчета согласно заданному порядку
-  const sortedMemories = Object.keys(report).sort((a, b) => {
-    return memoryOrder.indexOf(a) - memoryOrder.indexOf(b)
-  })
+      const $ = cheerio.load(response.data)
+      const pageResults = []
 
-  sortedMemories.forEach(memory => {
-    text += `🔹 ${memory}: `
+      $('.catalog-product-item').each((i, el) => {
+        const title = $(el).find('.catalog-product-item--title').text().trim()
+        const price = $(el).find('.catalog-product-item--price .current').text().trim().replace(/\D/g, '')
+        const oldPrice = $(el).find('.catalog-product-item--price .old').text().trim().replace(/\D/g, '')
 
-    const allPrices = []
+        pageResults.push({
+          title,
+          price,
+          oldPrice,
+        })
+      })
 
-    // Собираем все цены из обеих категорий
-    if (report[memory].regular) {
-      report[memory].regular.minPrice && allPrices.push(report[memory].regular.minPrice)
-      report[memory].regular.maxPrice && allPrices.push(report[memory].regular.maxPrice)
+      return pageResults
+    } catch (error) {
+      errors.push(`Ошибка при загрузке страницы ${pageUrl}: ${error.message}`)
+      return []
     }
+  }
 
-    if (report[memory].esim) {
-      report[memory].esim.minPrice && allPrices.push(report[memory].esim.minPrice)
-      report[memory].esim.maxPrice && allPrices.push(report[memory].esim.maxPrice)
-    }
+  // Загружаем данные для всех моделей iPhone
+  for (const version in links.iphone) {
+    for (const model in links.iphone[version]) {
+      const url = links.iphone[version][model]
+      try {
+        // Загружаем первую страницу для получения пагинации
+        const firstPageResponse = await axios.get(url, {
+          timeout: 15000,
+        })
+        const $ = cheerio.load(firstPageResponse.data)
 
-    if (allPrices.length > 0) {
-      const minPrice = Math.min(...allPrices)
-      const maxPrice = Math.max(...allPrices)
+        // Собираем все URL'ы из пагинации
+        const paginationUrls = new Set([url])
+        $('#content .pagination [data-url]').each((_, el) => {
+          const dataUrl = $(el).attr('data-url')
+          if (dataUrl) paginationUrls.add(dataUrl)
+        })
 
-      if (minPrice === maxPrice) {
-        const priceInUsd = Math.round(minPrice / dollarRate)
-        text += `${formatPrice(minPrice)} грн (💸 ${priceInUsd}$)`
-      } else {
-        const minPriceInUsd = Math.round(minPrice / dollarRate)
-        const maxPriceInUsd = Math.round(maxPrice / dollarRate)
-        text += `${formatPrice(minPrice)} - ${formatPrice(maxPrice)} грн (💸 ${minPriceInUsd}$ - ${maxPriceInUsd}$)`
+        // Загружаем данные со всех страниц параллельно
+        const pagePromises = Array.from(paginationUrls).map(pageUrl => parsePage(pageUrl))
+        const pagesResults = await Promise.allSettled(pagePromises)
+
+        // Собираем все результаты
+        pagesResults.forEach(result => {
+          if (result.status === 'fulfilled' && result.value) {
+            allResults.push(...result.value)
+          }
+        })
+      } catch (error) {
+        errors.push(`Ошибка при загрузке iPhone ${version} ${model}: ${error.message}`)
       }
-    } else {
-      text += `❌ нет данных`
     }
+  }
 
-    text += '\n'
+  if (allResults.length === 0) {
+    console.error('Ошибки при загрузке каталога:', errors)
+    return { text: '😔 К сожалению, не удалось загрузить каталог. Попробуйте позже.' }
+  }
+
+  // Группируем телефоны по моделям
+  const groupedPhones = {}
+  allResults.forEach(phone => {
+    const modelMatch = phone.title.match(/iPhone (\d+)/)
+    if (!modelMatch) return
+
+    const model = modelMatch[1]
+    if (!groupedPhones[model]) {
+      groupedPhones[model] = []
+    }
+    groupedPhones[model].push(phone)
   })
 
-  return text
+  // Формируем текст каталога
+  let catalogText = '📱 *Каталог iPhone*\n\n'
+
+  Object.keys(groupedPhones)
+    .sort((a, b) => b - a) // Сортируем по убыванию номера модели
+    .forEach(model => {
+      const phones = groupedPhones[model]
+      const prices = phones.map(p => parseInt(p.price)).filter(p => p > 0)
+      if (prices.length === 0) return
+
+      const minPrice = Math.min(...prices)
+      const maxPrice = Math.max(...prices)
+      const priceInUsdMin = Math.round(minPrice / dollarRate)
+      const priceInUsdMax = Math.round(maxPrice / dollarRate)
+
+      catalogText += `🔸 *iPhone ${model}*\n`
+      if (minPrice === maxPrice) {
+        catalogText += `   💰 ${formatPrice(minPrice)} грн (${priceInUsdMin}$)\n`
+      } else {
+        catalogText += `   💰 ${formatPrice(minPrice)} - ${formatPrice(maxPrice)} грн\n`
+        catalogText += `   💸 ${priceInUsdMin}$ - ${priceInUsdMax}$\n`
+      }
+      catalogText += '\n'
+    })
+
+  return {
+    data: groupedPhones,
+    text: catalogText,
+  }
 }
 
-function formatPrice(price) {
-  return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
-}
-
-export { getPhone, links, analyzeIphonePrices }
+export { getPhone, getIphones }
