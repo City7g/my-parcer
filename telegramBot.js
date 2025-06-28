@@ -2,6 +2,8 @@ import TelegramBot from 'node-telegram-bot-api'
 import dotenv from 'dotenv'
 import { setupPhoneHandlers } from './src/handlers/phoneHandlers.js'
 import { setupJwHandlers } from './src/handlers/jwHandlers.js'
+import { mainMenu } from './src/keyboards/index.js'
+import { handleError } from './src/utils/errorHandler.js'
 
 dotenv.config()
 
@@ -11,30 +13,13 @@ if (!token) {
   process.exit(1)
 }
 
-const options = {
-  polling: true,
-}
+const bot = new TelegramBot(token, { polling: true })
 
-const bot = new TelegramBot(token, options)
-
-const mainMenu = {
-  reply_markup: {
-    keyboard: [
-      ['🍎 Каталог iPhone', '📱 Телефоны'],
-      ['💰 Ценовые диапазоны', '🔄 Обновить данные'],
-      ['🔋 Температура устройства', '📰 Статья JW.org'],
-      ['ℹ️ Помощь'],
-    ],
-    resize_keyboard: true,
-  },
-}
-
+// Базовые обработчики
 bot.onText(/\/start/, msg => {
   const chatId = msg.chat.id
   const firstName = msg.from.first_name || 'пользователь'
-
   const welcomeMessage = `Привет, ${firstName}! 👋\n\nЯ бот для получения цен на телефоны из каталога.\n\nВыберите нужный пункт меню:`
-
   bot.sendMessage(chatId, welcomeMessage, mainMenu)
 })
 
@@ -85,12 +70,13 @@ bot.on('message', msg => {
   bot.sendMessage(chatId, 'Пожалуйста, используйте меню для навигации:', mainMenu)
 })
 
+// Обработка ошибок
 bot.on('polling_error', error => {
-  console.error('Ошибка опроса Telegram API:', error.message)
+  handleError(error, 'Ошибка опроса Telegram API')
 })
 
 // Инициализация обработчиков
-setupPhoneHandlers(bot, mainMenu)
+setupPhoneHandlers(bot)
 setupJwHandlers(bot)
 
 console.log('Телеграм бот запущен!')

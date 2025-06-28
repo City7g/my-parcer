@@ -19,6 +19,12 @@ export const setupPhoneHandlers = bot => {
     bot.sendMessage(chatId, 'Выберите модель Samsung:', samsungModelsMenu)
   })
 
+  // Добавляем обработчик для кнопки "Назад к выбору типа"
+  bot.onText(/↩️ Назад к выбору типа/, msg => {
+    const chatId = msg.chat.id
+    bot.sendMessage(chatId, 'Выберите тип телефона:', phoneTypesMenu)
+  })
+
   const handleVersionSelection = async (msg, brand, version) => {
     const chatId = msg.chat.id
     const models = phoneService.getModels(brand, version)
@@ -58,7 +64,13 @@ export const setupPhoneHandlers = bot => {
 
   bot.onText(/↩️ Назад к выбору версии/, msg => {
     const chatId = msg.chat.id
-    bot.sendMessage(chatId, 'Выберите модель iPhone:', iphoneModelsMenu)
+    // Определяем последний выбранный бренд (можно добавить сохранение состояния в будущем)
+    const lastMessage = msg.reply_to_message?.text || ''
+    if (lastMessage.includes('Samsung')) {
+      bot.sendMessage(chatId, 'Выберите модель Samsung:', samsungModelsMenu)
+    } else {
+      bot.sendMessage(chatId, 'Выберите модель iPhone:', iphoneModelsMenu)
+    }
   })
 
   bot.onText(/🍎 Каталог iPhone/, async msg => {
