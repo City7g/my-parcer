@@ -3,13 +3,12 @@ import * as cheerio from 'cheerio'
 
 let lastTitle = null
 let lastCheckTime = 0
-const CACHE_DURATION = 60 * 60 * 1000 // 1 час в миллисекундах
+const CACHE_DURATION = 60 * 60 * 1000
 
 export async function getJwCurrentArticleTitle(notifyCallback = null) {
   try {
     const currentTime = Date.now()
 
-    // Возвращаем кешированный заголовок, если он есть и кеш не истек
     if (lastTitle && currentTime - lastCheckTime < CACHE_DURATION) {
       return lastTitle
     }
@@ -29,7 +28,6 @@ export async function getJwCurrentArticleTitle(notifyCallback = null) {
       return lastTitle || null
     }
 
-    // Если заголовок изменился и есть callback, вызываем его
     if (lastTitle && newTitle !== lastTitle && notifyCallback) {
       notifyCallback(newTitle)
     }

@@ -7,6 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "bot": "node telegramBot.js",
+    "dev:bot": "nodemon telegramBot.js",
     "test": "vitest"
   },
   "keywords": [],

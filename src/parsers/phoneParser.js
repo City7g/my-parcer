@@ -1,7 +1,6 @@
 const axios = require('axios')
 const cheerio = require('cheerio')
 
-// Список популярных украинских интернет-магазинов электроники
 const SHOPS = [
   {
     name: 'Rozetka',

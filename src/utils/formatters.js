@@ -20,7 +20,6 @@ export function formatPriceReport(report, modelName) {
 
     const allPrices = []
 
-    // Собираем все цены из обеих категорий
     if (report[memory].regular) {
       report[memory].regular.minPrice && allPrices.push(report[memory].regular.minPrice)
       report[memory].regular.maxPrice && allPrices.push(report[memory].regular.maxPrice)
