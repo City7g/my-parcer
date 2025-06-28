@@ -61,7 +61,7 @@ bot.on('message', msg => {
     text === '/start' ||
     text === '/prices' ||
     text.match(
-      /📱 Телефоны|iPhone|Android|↩️ Назад|🍎 Каталог iPhone|💰 Ценовые диапазоны|🔄 Обновить данные|ℹ️ Помощь|Samsung|Samsung Galaxy S2[45]/
+      /📱 Телефоны|iPhone|Android|↩️ Назад|🍎 Каталог iPhone|💰 Ценовые диапазоны|🔄 Обновить данные|ℹ️ Помощь|Samsung|Pixel|↩️ Назад к выбору типа|↩️ Назад к выбору версии|↩️ Назад в главное меню/
     )
   ) {
     return

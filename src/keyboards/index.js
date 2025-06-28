@@ -40,3 +40,4 @@ export const createVersionMenu = (brand, version, models, backButton = '↩️ �
 
 export const iphoneModelsMenu = createModelMenu('iPhone', links.iphone)
 export const samsungModelsMenu = createModelMenu('Samsung', links.samsung)
+export const pixelModelsMenu = createModelMenu('Pixel', links.pixel)

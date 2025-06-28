@@ -13,6 +13,7 @@ export const links = {
       plus: 'https://jabko.ua/iphone/apple-iphone-16-plus/',
       pro: 'https://jabko.ua/iphone/apple-iphone-16-pro/',
       proMax: 'https://jabko.ua/iphone/apple-iphone-16-pro-max/',
+      e: 'https://jabko.ua/iphone/apple-iphone-16e/'
     },
   },
   samsung: {
@@ -27,4 +28,12 @@ export const links = {
       ultra: 'https://jabko.ua/smartfony/smartfony-samsung/smartfony-samsung-galaxy-s25-ultra/',
     },
   },
+  pixel: {
+    9: {
+      base: 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9/',
+      a: 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9a/',
+      pro: 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9-pro/',
+      'pro xl': 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9-pro-xl/'
+    }
+  }
 }

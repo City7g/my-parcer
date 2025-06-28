@@ -1,5 +1,12 @@
 import { PhoneService } from '../services/phoneService.js'
-import { mainMenu, phoneTypesMenu, iphoneModelsMenu, samsungModelsMenu, createVersionMenu } from '../keyboards/index.js'
+import {
+  mainMenu,
+  phoneTypesMenu,
+  iphoneModelsMenu,
+  samsungModelsMenu,
+  createVersionMenu,
+  pixelModelsMenu,
+} from '../keyboards/index.js'
 
 export const setupPhoneHandlers = bot => {
   const phoneService = new PhoneService(bot)
@@ -19,7 +26,11 @@ export const setupPhoneHandlers = bot => {
     bot.sendMessage(chatId, 'Выберите модель Samsung:', samsungModelsMenu)
   })
 
-  // Добавляем обработчик для кнопки "Назад к выбору типа"
+  bot.onText(/Pixel$/, msg => {
+    const chatId = msg.chat.id
+    bot.sendMessage(chatId, 'Выберите модель Pixel:', pixelModelsMenu)
+  })
+
   bot.onText(/↩️ Назад к выбору типа/, msg => {
     const chatId = msg.chat.id
     bot.sendMessage(chatId, 'Выберите тип телефона:', phoneTypesMenu)
@@ -34,6 +45,7 @@ export const setupPhoneHandlers = bot => {
 
   bot.onText(/iPhone (1[2-6])$/, (msg, match) => handleVersionSelection(msg, 'iPhone', match[1]))
   bot.onText(/Samsung (2[0-9])/, (msg, match) => handleVersionSelection(msg, 'Samsung', match[1]))
+  bot.onText(/Pixel (9)/, (msg, match) => handleVersionSelection(msg, 'Pixel', match[1]))
 
   const handleModelSelection = async (msg, brand, version, model) => {
     const chatId = msg.chat.id
@@ -56,10 +68,16 @@ export const setupPhoneHandlers = bot => {
 
   bot.onText(/iPhone (1[2-6]) (.*)/, (msg, match) => handleModelSelection(msg, 'iPhone', match[1], match[2]))
   bot.onText(/Samsung (2[0-9]) (.*)/, (msg, match) => handleModelSelection(msg, 'Samsung', match[1], match[2]))
+  bot.onText(/Pixel (9) (.*)/, (msg, match) => handleModelSelection(msg, 'Pixel', match[1], match[2]))
 
   bot.onText(/Android/, msg => {
     const chatId = msg.chat.id
-    bot.sendMessage(chatId, 'Выберите модель Samsung:', samsungModelsMenu)
+    bot.sendMessage(chatId, 'Выберите Android:', {
+      reply_markup: {
+        keyboard: [['Samsung', 'Pixel'], ['↩️ Назад в главное меню']],
+        resize_keyboard: true,
+      },
+    })
   })
 
   bot.onText(/↩️ Назад к выбору версии/, msg => {
@@ -68,6 +86,8 @@ export const setupPhoneHandlers = bot => {
     const lastMessage = msg.reply_to_message?.text || ''
     if (lastMessage.includes('Samsung')) {
       bot.sendMessage(chatId, 'Выберите модель Samsung:', samsungModelsMenu)
+    } else if (lastMessage.includes('Pixel')) {
+      bot.sendMessage(chatId, 'Выберите модель Pixel:', pixelModelsMenu)
     } else {
       bot.sendMessage(chatId, 'Выберите модель iPhone:', iphoneModelsMenu)
     }
