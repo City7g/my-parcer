@@ -56,7 +56,6 @@ async function parseShop(shop) {
     $(shop.selector.items).each((i, el) => {
       const title = $(el).find(shop.selector.title).text().trim()
 
-      // Проверяем, что это действительно S24 (исключаем аксессуары, чехлы и т.д.)
       if (
         title.toLowerCase().includes('s24') ||
         title.toLowerCase().includes('galaxy s24') ||

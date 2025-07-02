@@ -10,7 +10,6 @@ async function getPhone(type, version, model, msg) {
   const username = msg.from.username || msg.from.first_name || 'Неизвестный пользователь'
   console.log(`👤 Пользователь @${username} запросил информацию о ${type} ${version} ${model}`)
 
-  // Функция для парсинга одной страницы
   const parsePage = async pageUrl => {
     try {
       const response = await axios.get(pageUrl, {
@@ -45,14 +44,12 @@ async function getPhone(type, version, model, msg) {
   })
   const $ = cheerio.load(firstPageResponse.data)
 
-  // Собираем все URL'ы из пагинации
   const paginationUrls = new Set([url])
   $('#content .pagination [data-url]').each((_, el) => {
     const dataUrl = $(el).attr('data-url')
     if (dataUrl) paginationUrls.add(dataUrl)
   })
 
-  // Загружаем данные со всех страниц параллельно
   const pagePromises = Array.from(paginationUrls).map(pageUrl => parsePage(pageUrl))
   const pagesResults = await Promise.allSettled(pagePromises)
 
@@ -64,14 +61,16 @@ async function getPhone(type, version, model, msg) {
   })
 
   console.log(`✅ Для @${username}: Загружено ${allResults.length} товаров с ${paginationUrls.size} страниц`)
-  return analyzeIphonePrices(allResults)
+  const analysis = analyzeIphonePrices(allResults)
+  return {
+    ...analysis,
+    url,
+  }
 }
 
 function analyzeIphonePrices(iphones) {
-  // Создаем объект для хранения информации по объемам памяти
   const memoryGroups = {}
 
-  // Сначала собираем все уникальные значения памяти
   iphones.forEach(phone => {
     const memoryMatch = phone.title.match(/(16GB|32GB|64GB|128GB|256GB|512GB|1TB)/)
     if (memoryMatch) {
@@ -82,7 +81,6 @@ function analyzeIphonePrices(iphones) {
     }
   })
 
-  // Распределяем телефоны по группам
   iphones.forEach(phone => {
     const memoryMatch = phone.title.match(/(128GB|256GB|512GB|1TB|64GB|32GB|16GB)/)
     if (!memoryMatch) return
@@ -126,7 +124,6 @@ function analyzeIphonePrices(iphones) {
     }
   })
 
-  // Определяем название модели из первого телефона в списке
   const modelName = iphones.length > 0 ? iphones[0].title.split(' ').slice(0, 3).join(' ') : 'iPhone'
 
   return {

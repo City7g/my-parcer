@@ -63,7 +63,12 @@ export const setupPhoneHandlers = bot => {
       return bot.sendMessage(chatId, result.message, mainMenu)
     }
 
-    bot.sendMessage(chatId, result.data.text)
+    // Отправляем текст с ценами и ссылкой
+    bot.sendMessage(chatId, result.data.text, {
+      reply_markup: {
+        inline_keyboard: [[{ text: 'Открыть сайт', url: result.data.url }]],
+      },
+    })
   }
 
   bot.onText(/iPhone (1[2-6]) (.*)/, (msg, match) => handleModelSelection(msg, 'iPhone', match[1], match[2]))
