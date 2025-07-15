@@ -1,43 +1,26 @@
-import axios from 'axios'
 import * as cheerio from 'cheerio'
+import { BaseParser } from './BaseParser.js'
 
-let lastTitle = null
-let lastCheckTime = 0
-const CACHE_DURATION = 60 * 60 * 1000
+export class JwParser extends BaseParser {
+  constructor(config = {}) {
+    super(config)
+  }
 
-export async function getJwCurrentArticleTitle(notifyCallback = null) {
-  try {
-    const currentTime = Date.now()
+  async extractData(html) {
+    const $ = cheerio.load(html)
+    const title = $('#content .billboardTitle').first().text().trim()
 
-    if (lastTitle && currentTime - lastCheckTime < CACHE_DURATION) {
-      return lastTitle
+    if (!title) {
+      throw new Error('Заголовок не найден')
     }
 
-    const response = await axios.get('https://www.jw.org/ru/', {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      },
-      timeout: 10000,
-    })
+    return { title }
+  }
 
-    const $ = cheerio.load(response.data)
-    const newTitle = $('#content .billboardTitle').first().text().trim()
-
-    if (!newTitle) {
-      return lastTitle || null
+  async processData(data) {
+    return {
+      title: data.title,
+      timestamp: new Date().toISOString(),
     }
-
-    if (lastTitle && newTitle !== lastTitle && notifyCallback) {
-      notifyCallback(newTitle)
-    }
-
-    lastTitle = newTitle
-    lastCheckTime = currentTime
-
-    return newTitle
-  } catch (error) {
-    console.error('Ошибка при получении заголовка с jw.org:', error.message)
-    return lastTitle || 'Ошибка при получении заголовка с jw.org'
   }
 }

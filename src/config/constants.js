@@ -1,5 +1,11 @@
 export const dollarRate = 41.51
 
+export const http = {
+  USER_AGENT:
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+  TIMEOUT: 10000,
+}
+
 export const links = {
   iphone: {
     15: {
@@ -13,7 +19,7 @@ export const links = {
       plus: 'https://jabko.ua/iphone/apple-iphone-16-plus/',
       pro: 'https://jabko.ua/iphone/apple-iphone-16-pro/',
       proMax: 'https://jabko.ua/iphone/apple-iphone-16-pro-max/',
-      e: 'https://jabko.ua/iphone/apple-iphone-16e/'
+      e: 'https://jabko.ua/iphone/apple-iphone-16e/',
     },
   },
   samsung: {
@@ -33,7 +39,7 @@ export const links = {
       base: 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9/',
       a: 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9a/',
       pro: 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9-pro/',
-      'pro xl': 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9-pro-xl/'
-    }
-  }
+      'pro xl': 'https://jabko.ua/smartfony/smartfony-google-pixel/google-pixel-9-pro-xl/',
+    },
+  },
 }
