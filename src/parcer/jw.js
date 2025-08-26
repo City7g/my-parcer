@@ -1,18 +1,8 @@
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 
-let lastTitle = null
-let lastCheckTime = 0
-const CACHE_DURATION = 60 * 60 * 1000
-
-export async function getJwCurrentArticleTitle(notifyCallback = null) {
+export async function getJwCurrentArticleTitle() {
   try {
-    const currentTime = Date.now()
-
-    if (lastTitle && currentTime - lastCheckTime < CACHE_DURATION) {
-      return lastTitle
-    }
-
     const response = await axios.get('https://www.jw.org/ru/', {
       headers: {
         'User-Agent':
@@ -23,17 +13,6 @@ export async function getJwCurrentArticleTitle(notifyCallback = null) {
 
     const $ = cheerio.load(response.data)
     const newTitle = $('#content .billboardTitle').first().text().trim()
-
-    if (!newTitle) {
-      return lastTitle || null
-    }
-
-    if (lastTitle && newTitle !== lastTitle && notifyCallback) {
-      notifyCallback(newTitle)
-    }
-
-    lastTitle = newTitle
-    lastCheckTime = currentTime
 
     return newTitle
   } catch (error) {

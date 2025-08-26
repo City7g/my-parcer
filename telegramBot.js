@@ -1,11 +1,18 @@
 import TelegramBot from 'node-telegram-bot-api'
 import dotenv from 'dotenv'
-import { setupPhoneHandlers } from './src/handlers/phoneHandlers.js'
-import { setupJwHandlers } from './src/handlers/jwHandlers.js'
-import { mainMenu } from './src/keyboards/index.js'
-import { handleError } from './src/utils/errorHandler.js'
+import handleJw from './src/handlers/jw.js'
+import { mainKeyboard, jwKeyboard, startKeyboard } from './src/keyboards/index.js'
+import { jwRouter } from './src/router/jw.js'
 
 dotenv.config()
+
+const mainMenuKeyboard = {
+  keyboard: [
+    ['📚 Категория 1', '🎮 Категория 2'],
+    ['📞 Контакты', '❓ Помощь'],
+  ],
+  resize_keyboard: true,
+}
 
 const token = process.env.TELEGRAM_BOT_TOKEN
 if (!token) {
@@ -15,68 +22,52 @@ if (!token) {
 
 const bot = new TelegramBot(token, { polling: true })
 
-// Базовые обработчики
+// Установка команд для меню слева
+const setupCommands = async () => {
+  try {
+    await bot.setMyCommands([
+      { command: 'start', description: 'Начать работу с ботом' },
+      { command: 'jw', description: 'Получить текущую статью JW' },
+      { command: 'change', description: 'Изменить настройки' },
+      { command: 'help', description: 'Получить помощь' },
+    ])
+    console.log('Команды успешно установлены!')
+  } catch (error) {
+    console.error('Ошибка при установке команд:', error)
+  }
+}
+
+// Вызываем установку команд при запуске бота
+setupCommands()
+
 bot.onText(/\/start/, msg => {
   const chatId = msg.chat.id
-  const firstName = msg.from.first_name || 'пользователь'
-  const welcomeMessage = `Привет, ${firstName}! 👋\n\nЯ бот для получения цен на телефоны из каталога.\n\nВыберите нужный пункт меню:`
-  bot.sendMessage(chatId, welcomeMessage, mainMenu)
+  bot.sendMessage(chatId, 'Start', startKeyboard)
 })
 
-bot.onText(/↩️ Назад в главное меню/, msg => {
+bot.onText(/\/change/, msg => {
   const chatId = msg.chat.id
-  bot.sendMessage(chatId, 'Главное меню:', mainMenu)
+  bot.sendMessage(chatId, 'Change', { reply_markup: mainMenuKeyboard })
 })
 
-bot.onText(/💰 Ценовые диапазоны/, msg => {
+bot.onText(/\/help/, msg => {
   const chatId = msg.chat.id
-  bot.sendMessage(chatId, 'Раздел ценовых диапазонов находится в разработке.', mainMenu)
+  const helpText = `
+🤖 *Доступные команды:*
+
+/start - Начать работу с ботом
+/jw - Получить текущую статью JW
+/change - Изменить настройки
+/help - Показать это сообщение
+
+💡 *Как пользоваться:*
+• Выберите команду из меню слева
+• Или используйте кнопки на клавиатуре
+• Для быстрого доступа введите / в поле ввода
+  `
+  bot.sendMessage(chatId, helpText, { parse_mode: 'Markdown' })
 })
 
-bot.onText(/🔄 Обновить данные/, msg => {
-  const chatId = msg.chat.id
-  bot.sendMessage(chatId, 'Обновление данных...\n\nДанные успешно обновлены!', mainMenu)
-})
-
-bot.onText(/ℹ️ Помощь/, msg => {
-  const chatId = msg.chat.id
-  bot.sendMessage(
-    chatId,
-    'Справка по использованию бота:\n\n' +
-      '🍎 *Каталог iPhone* - получить все модели iPhone с ценами\n' +
-      '📱 *Телефоны* - выбрать конкретный тип и модель телефона\n' +
-      '💰 *Ценовые диапазоны* - найти телефоны в определенном ценовом диапазоне\n' +
-      '🔄 *Обновить данные* - обновить информацию о ценах\n' +
-      'ℹ️ *Помощь* - показать эту справку',
-    { parse_mode: 'Markdown' }
-  )
-})
-
-// Обработка неизвестных команд
-bot.on('message', msg => {
-  const chatId = msg.chat.id
-  const text = msg.text
-
-  if (
-    text === '/start' ||
-    text === '/prices' ||
-    text.match(
-      /📱 Телефоны|iPhone|Android|↩️ Назад|🍎 Каталог iPhone|💰 Ценовые диапазоны|🔄 Обновить данные|ℹ️ Помощь|Samsung|Pixel|↩️ Назад к выбору типа|↩️ Назад к выбору версии|↩️ Назад в главное меню/
-    )
-  ) {
-    return
-  }
-
-  bot.sendMessage(chatId, 'Пожалуйста, используйте меню для навигации:', mainMenu)
-})
-
-// Обработка ошибок
-bot.on('polling_error', error => {
-  handleError(error, 'Ошибка опроса Telegram API')
-})
-
-// Инициализация обработчиков
-setupPhoneHandlers(bot)
-setupJwHandlers(bot)
+await jwRouter(bot)
 
 console.log('Телеграм бот запущен!')
